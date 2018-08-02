@@ -31,7 +31,8 @@ if ( ! class_exists( 'SuiteCRM_REST_API' ) ) {
                             'user_name' => $this->username,
                             'password'  => md5( $this->password ),
                         ),
-                    )),                
+                        'name_value_list'   => array(),
+                    )),
             );
             
             $ch = curl_init( $this->url );
@@ -44,11 +45,18 @@ if ( ! class_exists( 'SuiteCRM_REST_API' ) ) {
             curl_close( $ch );
             
             $response = json_decode( $json_response );
+            if ( isset( $response->name ) ) {
+                $log = "errorCode: ".$response->name."\n";
+                $log .= "message: ".$response->description."\n";
+                $log .= "Date: ".date( 'Y-m-d H:i:s' )."\n\n";                            
+
+                file_put_contents( GF_SC_PLUGIN_PATH.'debug.log', $log, FILE_APPEND );
+            }
             
             return $response;
         }
         
-        function addRecord( $session_id, $module, $data ) {            
+        function addRecord( $session_id, $module, $data, $form_id ) {            
             
             $filter_data = array();
             if ( $data != null ) {
@@ -81,6 +89,15 @@ if ( ! class_exists( 'SuiteCRM_REST_API' ) ) {
             curl_close( $ch );
             
             $response = json_decode( $json_response );
+
+            if ( isset( $response->name ) ) {
+                $log = "Form ID: ".$form_id."\n";
+                $log .= "errorCode: ".$response->name."\n";
+                $log .= "message: ".$response->description."\n";
+                $log .= "Date: ".date( 'Y-m-d H:i:s' )."\n\n";                            
+
+                file_put_contents( GF_SC_PLUGIN_PATH.'debug.log', $log, FILE_APPEND );
+            }
             
             return $response;
         }
@@ -109,6 +126,14 @@ if ( ! class_exists( 'SuiteCRM_REST_API' ) ) {
             
             $response = json_decode( $json_response );
             
+            if ( isset( $response->name ) ) {
+                $log = "errorCode: ".$response->name."\n";
+                $log .= "message: ".$response->description."\n";
+                $log .= "Date: ".date( 'Y-m-d H:i:s' )."\n\n";                            
+
+                file_put_contents( GF_SC_PLUGIN_PATH.'debug.log', $log, FILE_APPEND );
+            }
+            
             $filter_fields = array();
             if ( isset( $response->module_fields ) && $response->module_fields != null ) {
                 foreach ( $response->module_fields as $field ) {
@@ -120,6 +145,12 @@ if ( ! class_exists( 'SuiteCRM_REST_API' ) ) {
                         );
                     }
                 }
+                
+                $filter_fields['assigned_user_id'] = array(
+                    'label'     => 'Assigned to',
+                    'type'      => 'relate',  
+                    'required'  => 0,
+                );
             }
             
             return $filter_fields;

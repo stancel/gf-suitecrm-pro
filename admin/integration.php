@@ -22,11 +22,15 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
     function gf_sc_integration_main_menu_callback() {
         
         global $wpdb;
+        
+        $gf_db_version = get_option( 'gf_db_version' );
         ?>
             <div class="wrap">                
                 <h1><?php _e( 'Gravity Forms Suite CRM Integration' ); ?></h1>
                 <hr>                
                 <?php
+                $gf_sc_licence = get_site_option( 'gf_sc_licence' );
+                if ( $gf_sc_licence ) {
                     if ( isset( $_REQUEST['id'] ) ) {
                         $id = intval( $_REQUEST['id'] );
                         if ( isset( $_REQUEST['submit'] ) ) {                            
@@ -34,7 +38,7 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                             update_option( 'gf_sc_fields_'.$id, $_REQUEST['gf_sc_fields'] );
                             ?>
                                 <div class="notice notice-success is-dismissible">
-                                    <p><?php _e( 'Integrated successfully.' ); ?></p>
+                                    <p><?php _e( 'Integration settings saved.' ); ?></p>
                                 </div>
                             <?php
                         } else if ( isset( $_REQUEST['filter'] ) ) {
@@ -42,14 +46,16 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                         }
                         
                         $gf_sc_module = get_option( 'gf_sc_module_'.$id );
-                        if ( $gf_sc_module == null ) {
-                            $gf_sc_module = 'Contacts';
-                        }
                                                 
                         $gf_sc = get_option( 'gf_sc_'.$id );
                         $gf_sc_fields = get_option( 'gf_sc_fields_'.$id );
                                                 
-                        $form_meta = $wpdb->get_row( 'SELECT * FROM '.$wpdb->prefix.'rg_form_meta WHERE form_id='.$id.' LIMIT 1' );
+                        if ( $gf_db_version && version_compare( $gf_db_version, '2.3', '>=' ) ) {
+                            $form_meta = $wpdb->get_row( 'SELECT * FROM '.$wpdb->prefix.'gf_form_meta WHERE form_id='.$id.' LIMIT 1' );
+                        } else {
+                            $form_meta = $wpdb->get_row( 'SELECT * FROM '.$wpdb->prefix.'rg_form_meta WHERE form_id='.$id.' LIMIT 1' );
+                        }
+                            
                         $form = json_decode( $form_meta->display_meta );
                         ?>   
                             <h2><?php _e( 'Form' ); ?>: <?php echo $form->title; ?></h2>
@@ -120,7 +126,7 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                                                 <tbody>
                                                     <?php
                                                         $gf_sc_modules_fields = get_option( 'gf_sc_modules_fields' );
-                                                        $gf_sc_module_fields = $gf_sc_modules_fields[$gf_sc_module];
+                                                        $gf_sc_module_fields = ( isset( $gf_sc_modules_fields[$gf_sc_module] ) ? $gf_sc_modules_fields[$gf_sc_module] : array() );
                                                         if ( ! is_array( $gf_sc_module_fields ) ) {
                                                             $gf_sc_module_fields = array();
                                                         }
@@ -133,10 +139,12 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                                                                         <select name="gf_sc_fields[<?php echo $gf_sc_field_key; ?>][key]">
                                                                             <option value=""><?php _e( 'Select a field' ); ?></option>
                                                                             <?php    
+                                                                                $type = '';
                                                                                 foreach ( $gf_sc_module_fields as $key => $value ) {
                                                                                     $selected = '';
-                                                                                    if ( isset( $gf_sc_fields[$gf_sc_field_key][key] ) && $gf_sc_fields[$gf_sc_field_key][key] == $key ) {
+                                                                                    if ( isset( $gf_sc_fields[$gf_sc_field_key]['key'] ) && $gf_sc_fields[$gf_sc_field_key]['key'] == $key ) {
                                                                                         $selected = ' selected="selected"';
+                                                                                        $type = $value['type'];
                                                                                     }   
                                                                                     ?>
                                                                                         <option value="<?php echo $key; ?>"<?php echo $selected; ?>>
@@ -146,6 +154,8 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                                                                                 }
                                                                             ?>                                                                                   
                                                                         </select>
+                                                                        <input type="hidden" name="gf_sc_fields[<?php echo $gf_sc_field_key; ?>][type]" value="<?php echo $type; ?>" />
+                                                                        <input type="hidden" name="gf_sc_fields[<?php echo $gf_sc_field_key; ?>][field_type]" value="<?php echo $gf_sc_field_value['type']; ?>" />
                                                                     </td>
                                                                 </tr>
                                                             <?php
@@ -180,7 +190,12 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                             </tfoot>
                             <tbody>
                                 <?php                                    
-                                    $forms = $wpdb->get_results( 'SELECT * FROM '.$wpdb->prefix.'rg_form WHERE is_trash=0' );                                    
+                                    if ( $gf_db_version && version_compare( $gf_db_version, '2.3', '>=' ) ) {
+                                        $forms = $wpdb->get_results( 'SELECT * FROM '.$wpdb->prefix.'gf_form WHERE is_trash=0' );
+                                    } else {
+                                        $forms = $wpdb->get_results( 'SELECT * FROM '.$wpdb->prefix.'rg_form WHERE is_trash=0' );
+                                    }
+                                    
                                     if ( $forms != null ) {                                
                                         foreach ( $forms as $form ) {
                                             ?>
@@ -203,6 +218,13 @@ if ( ! function_exists( 'gf_sc_integration_main_menu_callback' ) ) {
                         </table>
                         <?php                         
                     } 
+                } else {
+                    ?>
+                        <div class="notice notice-error is-dismissible">
+                            <p><?php _e( 'Please verify purchase code.' ); ?></p>
+                        </div>
+                    <?php
+                }
                 ?>
             </div>
         <?php
